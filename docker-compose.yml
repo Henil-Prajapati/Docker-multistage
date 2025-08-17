@@ -1,0 +1,139 @@
+version: '3.8'
+
+services:
+  # Development Service
+  chatbot-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+    networks:
+      - chatbot-network
+    profiles:
+      - dev
+
+  # Production Service
+  chatbot-prod:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    networks:
+      - chatbot-network
+    restart: unless-stopped
+    profiles:
+      - prod
+
+  # Optimized Production Service
+  chatbot-optimized:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production-optimized
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    networks:
+      - chatbot-network
+    restart: unless-stopped
+    profiles:
+      - optimized
+
+  # Multi-architecture Service
+  chatbot-multiarch:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: multiarch
+      platforms:
+        - linux/amd64
+        - linux/arm64
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    networks:
+      - chatbot-network
+    restart: unless-stopped
+    profiles:
+      - multiarch
+
+  # Nginx Reverse Proxy (for production)
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - chatbot-prod
+    networks:
+      - chatbot-network
+    profiles:
+      - prod
+      - nginx
+
+  # Redis for session storage (optional)
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - chatbot-network
+    profiles:
+      - redis
+
+  # Monitoring with Prometheus and Grafana
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    networks:
+      - chatbot-network
+    profiles:
+      - monitoring
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana-data:/var/lib/grafana
+    networks:
+      - chatbot-network
+    profiles:
+      - monitoring
+
+networks:
+  chatbot-network:
+    driver: bridge
+
+volumes:
+  redis-data:
+  prometheus-data:
+  grafana-data:
